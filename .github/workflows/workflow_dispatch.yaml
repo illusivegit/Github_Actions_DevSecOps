@@ -1,0 +1,94 @@
+name: Test reusable Snyk workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: "Which scenario to run?"
+        required: true
+        type: choice
+        options:
+          - app_happy
+          - app_fail_validation
+          - iac_happy
+          - iac_fail_validation
+          - container_only
+          - severity_none_app
+
+jobs:
+  call_app_happy:
+    if: inputs.scenario == 'app_happy'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: app
+      SCA_scan: snyk
+      SAST_scan: snyk
+      IAC_scan: snyk
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  call_app_fail_validation:
+    if: inputs.scenario == 'app_fail_validation'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: app
+      SCA_scan: none      # <- should fail validate_profile
+      SAST_scan: snyk
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  call_iac_happy:
+    if: inputs.scenario == 'iac_happy'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: iac
+      IAC_scan: snyk
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  call_iac_fail_validation:
+    if: inputs.scenario == 'iac_fail_validation'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: iac
+      IAC_scan: none      # <- should fail validate_profile
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  call_container_only:
+    if: inputs.scenario == 'container_only'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: app        # profile doesn't matter for container job as written
+      SCA_scan: snyk
+      SAST_scan: snyk
+      CONTAINER_scan: snyk
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  call_severity_none_app:
+    if: inputs.scenario == 'severity_none_app'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: app
+      SCA_scan: snyk
+      SAST_scan: snyk
+      CONTAINER_scan: none
+      severity_threshold: none   # <- should echo enforced "low"
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
