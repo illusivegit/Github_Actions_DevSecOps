@@ -1,0 +1,25 @@
+name: SCA & SAST Security Blueprint
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  sca_sast_scan:
+    name: SCA & SAST Security
+    uses: Workflows-411/secure_pipeline_DSO/.github/workflows/secure_snyk.yaml@main
+
+    with:
+      PROFILE: "app" # enforces SCA and SAST path in the reusable workflow
+      SCA_scan: "snyk" # must be 'snyk' or validate profile will fail
+      SAST_scan: "snyk" # must be 'snyk' or validate profile will fail
+      CONTAINER_scan: "none" # optional if you want to use enter 'snyk'
+      severity_threshold: "high" # optional can omit to use default
+
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }} #snyk token stored in repo secrets
+      Snyk_Org: ${{ secrets.SNYK_ORG }} #snyk org stored in repo secrets or entered with Org Slug

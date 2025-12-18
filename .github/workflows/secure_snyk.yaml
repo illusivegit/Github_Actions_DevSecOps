@@ -1,0 +1,346 @@
+name: Reusable Secure Snyk Workflow
+
+on:
+  workflow_call:
+    inputs:
+      PROFILE:
+        description: "Training profile: 'app' for SCA/SAST. 'iac' for IaC"
+        required: true
+        type: string
+        # This is used to select the appropriate Snyk scan type
+
+      SCA_scan:
+        description: "App profile: enable SCA (set 'snyk' to run)"
+        required: false
+        default: "snyk"
+        type: string
+
+      SAST_scan:
+        description: "App profile: enable SAST (set 'snyk' to run)"
+        required: false
+        default: "snyk"
+        type: string
+
+      IAC_scan:
+        description: "IaC profile: enable IaC (set 'snyk' to run)"
+        required: false
+        default: "snyk"
+        type: string
+
+      CONTAINER_scan:
+        description: "Optional: enable container scan(set 'snyk' to run)"
+        required: false
+        default: "none"
+        type: string
+
+      severity_threshold:
+        description: >
+          Platform enforced severity threshold. Default is 'high'.
+          If caller sets 'none', workflow will internally enforce 'low' (scorched earth).
+        required: false
+        default: "high"
+        type: string
+
+    secrets:
+      SNYK_TOKEN:
+        required: true
+      Snyk_Org:
+        required: true
+
+# Here we are going to set up the Profile input rules
+jobs:
+  validate_profile:
+    name: Validate Profile and Required SCA_scan
+    runs-on: ubuntu-latest
+    env:
+      PROFILE: ${{ inputs.PROFILE }}
+    steps:
+      - name: Validate profile and required scan configuration
+        run: |
+          echo "Profile = ${PROFILE}"
+          echo "SCA_scan = ${{ inputs.SCA_scan }}"
+          echo "SAST_scan = ${{ inputs.SAST_scan }}"
+          echo "IAC_scan = ${{ inputs.IAC_scan }}"
+
+          if [ "$PROFILE" = "app" ]; then
+            echo "Validating App profile requirements (SCA + SAST)..."
+            if [ "${{ inputs.SCA_scan }}" != "snyk" ] || [ "${{ inputs.SAST_scan }}" != "snyk" ]; then
+              echo "Error: For 'app' profile, both SCA_scan and SAST_scan must be set to 'snyk'."
+              exit 1
+            fi
+            echo "App profile validation passed."
+          elif [ "$PROFILE" = "iac" ]; then
+            echo "Validating IaC profile requirements (IaC Scan)..."
+            if [ "${{ inputs.IAC_scan }}" != "snyk" ]; then
+              echo "Error: For 'iac' profile, IAC_scan must be set to 'snyk'."
+              exit 1
+            fi
+            echo "IaC profile validation passed."
+          else
+            echo "Error: Invalid PROFILE value: '${PROFILE}'. Must be 'app' or 'iac'."
+            exit 1
+          fi
+
+  # Helper: this is the global severity logic
+  # NOTE: each job sets SNYK_SEVERITY the same way so it's consistent
+  # If severity_threshold == 'none' -> use 'low' (scorched earth)
+  # Otherwise -> 'high'
+  #
+  sca_scan:
+    name: SCA (Open Source) Scan
+    runs-on: ubuntu-latest
+    needs: validate_profile
+    if: inputs.PROFILE == 'app'
+    env:
+      SNYK_SEVERITY: ${{ inputs.severity_threshold == 'none' && 'low' || 'high' }}
+
+    steps:
+      - name: Show enforce severity
+        run: 'echo "Enforced Snyk severity threshold for SCA: $SNYK_SEVERITY"'
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Optional: install app dependencies if this is a Python project
+      - name: Install Python dependencies
+        if: hashFiles('requirements.txt') != ''
+        run: pip install -r requirements.txt
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@master
+
+      - name: Authenticate Snyk
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
+
+      - name: Run REQUIRED SCA scan
+        run: |
+          echo "Running REQUIRED SCA scan with severity threshold: $SNYK_SEVERITY"
+
+          set +e
+          snyk test \
+            --all-projects \
+            --severity-threshold=$SNYK_SEVERITY \
+            --org=${{ secrets.Snyk_Org }}
+          EXIT_CODE=$?
+          set -e
+
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            echo "This build failed due to High/Critical (or higher than threshold) SCA issues."
+            echo "Please view the Snyk snapshot to remediate the issues."
+            exit $EXIT_CODE
+          else
+            echo "No issues at or above the severity threshold ($SNYK_SEVERITY) detected in SCA scan."
+          fi
+
+      - name: Monitor SCA Results to SNYK UI
+        if: always()
+        id: sca_monitor
+        run: |
+          echo "Uploading SCA snapshot to Snyk UI..."
+          snyk monitor \
+            --all-projects \
+            --severity-threshold=$SNYK_SEVERITY \
+            --json \
+            --org=${{ secrets.Snyk_Org }} > sca-monitor.json
+
+          SNAPSHOT_URL=$(jq -r '.uri' sca-monitor.json)
+          echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Display SCA Snapshot Link
+        if: always()
+        run: |
+          echo "Explore this Snapshot: ${{ steps.sca_monitor.outputs.snapshot-url }}"
+
+  #
+  # 3 SAST Code Scan Job
+  #
+  sast_scan:
+    name: SAST (Code) Scan
+    runs-on: ubuntu-latest
+    needs: validate_profile
+    if: inputs.PROFILE == 'app'
+    env:
+      SNYK_SEVERITY: ${{ inputs.severity_threshold == 'none' && 'low' || 'high' }}
+
+    steps:
+      - name: Show enforce severity
+        run: 'echo "Enforced Snyk severity threshold for SAST: $SNYK_SEVERITY"'
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Optional: install app dependencies if this is a Python project
+      - name: Install Python dependencies
+        if: hashFiles('requirements.txt') != ''
+        run: pip install -r requirements.txt
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@master
+
+      - name: Authenticate Snyk
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
+
+      - name: Run REQUIRED SAST scan
+        run: |
+          echo "Running REQUIRED SAST scan with severity threshold: $SNYK_SEVERITY"
+
+          set +e
+          snyk code test \
+            --severity-threshold=$SNYK_SEVERITY \
+            --org=${{ secrets.Snyk_Org }}
+          EXIT_CODE=$?
+          set -e
+
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            echo "This build failed due to High/Critical (or higher than threshold) SAST issues."
+            echo "Please view the Snyk snapshot to remediate the issues."
+            exit $EXIT_CODE
+          else
+            echo "No issues at or above the severity threshold ($SNYK_SEVERITY) detected in SAST scan."
+          fi
+
+      - name: Upload SAST Report / Snapshot
+        if: always()
+        id: sast_monitor
+        run: |
+          echo "Generating SAST report with severity threshold: $SNYK_SEVERITY"
+          snyk code test \
+            --severity-threshold=$SNYK_SEVERITY \
+            --report \
+            --json \
+            --org=${{ secrets.Snyk_Org }} > sast-report.json
+
+          SNAPSHOT_URL=$(jq -r '.uri' sast-report.json)
+          echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Display SAST Snapshot Link
+        if: always()
+        run: |
+          echo "Explore this Snapshot: ${{ steps.sast_monitor.outputs.snapshot-url }}"
+
+  #
+  # 4 IaC Scan Job
+  #
+  iac_scan:
+    name: IaC Scan
+    runs-on: ubuntu-latest
+    needs: validate_profile
+    if: inputs.PROFILE == 'iac'
+    env:
+      SNYK_SEVERITY: ${{ inputs.severity_threshold == 'none' && 'low' || 'high' }}
+
+    steps:
+      - name: Show enforce severity
+        run: 'echo "Enforced Snyk severity threshold for IaC: $SNYK_SEVERITY"'
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@master
+
+      - name: Authenticate Snyk
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
+
+      - name: Run REQUIRED IaC scan
+        run: |
+          echo "Running REQUIRED IaC scan with severity threshold: $SNYK_SEVERITY"
+
+          set +e
+          snyk iac test \
+            --severity-threshold=$SNYK_SEVERITY \
+            --org=${{ secrets.Snyk_Org }}
+          EXIT_CODE=$?
+          set -e
+
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            echo "This build failed due to High/Critical (or higher than threshold) IaC issues."
+            echo "Please view the Snyk snapshot to remediate the issues."
+            exit $EXIT_CODE
+          else
+            echo "No issues at or above the severity threshold ($SNYK_SEVERITY) detected in IaC scan."
+          fi
+
+      - name: Monitor IaC Results to SNYK UI
+        if: always()
+        id: iac_monitor
+        run: |
+          echo "Uploading IaC snapshot to Snyk UI..."
+          snyk iac monitor \
+            --severity-threshold=$SNYK_SEVERITY \
+            --json \
+            --org=${{ secrets.Snyk_Org }} > iac-monitor.json
+
+          SNAPSHOT_URL=$(jq -r '.uri' iac-monitor.json)
+          echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Display IaC Snapshot Link
+        if: always()
+        run: |
+          echo "Explore this Snapshot: ${{ steps.iac_monitor.outputs.snapshot-url }}"
+
+  #
+  # 5 Container Scan Job (optional)
+  #
+  container_scan:
+    name: Container Scan
+    runs-on: ubuntu-latest
+    needs: validate_profile
+    if: inputs.CONTAINER_scan == 'snyk'
+    env:
+      SNYK_SEVERITY: ${{ inputs.severity_threshold == 'none' && 'low' || 'high' }}
+
+    steps:
+      - name: Show enforce severity
+        run: |
+          echo "Enforced Snyk severity threshold for Container: $SNYK_SEVERITY"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        run: |
+          echo "Building Docker image for scanning..."
+          docker build -t training-image:latest .
+        # Need to add additional key value pair here (e.g., build args, target, etc.)
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@master
+
+      - name: Authenticate Snyk
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
+
+      - name: Run Container scan
+        run: |
+          echo "Running Container scan with severity threshold: $SNYK_SEVERITY"
+
+          set +e
+          snyk container test training-image:latest \
+            --severity-threshold=$SNYK_SEVERITY \
+            --org=${{ secrets.Snyk_Org }}
+          EXIT_CODE=$?
+          set -e
+
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            echo "This build failed due to High/Critical (or higher than threshold) Container issues."
+            echo "Please view the Snyk snapshot to remediate the issues."
+            exit $EXIT_CODE
+          else
+            echo "No issues at or above the severity threshold ($SNYK_SEVERITY) detected in Container scan."
+          fi
+
+      - name: Monitor Container Results to SNYK UI
+        id: container_monitor
+        run: |
+          echo "Uploading Container snapshot to Snyk UI..."
+          snyk container monitor training-image:latest \
+            --severity-threshold=$SNYK_SEVERITY \
+            --json \
+            --org=${{ secrets.Snyk_Org }} > container-monitor.json
+
+          SNAPSHOT_URL=$(jq -r '.uri' container-monitor.json)
+          echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Display Container Snapshot Link
+        run: |
+          echo "Explore this Snapshot: ${{ steps.container_monitor.outputs.snapshot-url }}"
