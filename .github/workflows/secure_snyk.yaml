@@ -350,7 +350,7 @@ jobs:
             --org=${{ secrets.Snyk_Org }} > container-monitor.json
 
           cat "container-monitor.json"  
-          SNAPSHOT_URL=$(jq -r '.[].uri' container-monitor.json)
+          SNAPSHOT_URL=$(grep -o '"uri": *"[^"]*"' container-monitor.json | grep -o '"[^"]*"$' | tr -d '"')
           echo "SNAPSHOT_URL"
       #     echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
 
