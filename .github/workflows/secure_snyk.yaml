@@ -4,33 +4,33 @@ on:
   workflow_call:
     inputs:
       PROFILE:
-        description: "Training profile: 'app' for SCA/SAST. 'iac' for IaC"
+        description: "Training profile: 'app' for SCA/SAST. 'iac' for IaC. 'image_scan' for Container Images"
         required: true
         type: string
         # This is used to select the appropriate Snyk scan type
 
       SCA_scan:
-        description: "App profile: enable SCA (set 'snyk' to run)"
+        description: "App profile: set to 'snyk' to run; set to 'none' to skip"
         required: false
         default: "none"
         type: string
 
       SAST_scan:
-        description: "App profile: enable SAST (set 'snyk' to run)"
+        description: "App profile: set to 'snyk' to run; set to 'none' to skip"
         required: false
         default: "none"
         type: string
 
       IAC_scan:
-        description: "IaC profile: enable IaC (set 'snyk' to run)"
+        description: "IaC profile: set to 'snyk' to run; set to 'none' to skip"
         required: false
-        default: "none"
+        default: "snyk"
         type: string
 
       CONTAINER_scan:
-        description: "Optional: enable Container Image Scan (set 'snyk' to run)"
+        description: "Image scan profile: set to 'snyk' to run; set to 'none' to skip"
         required: false
-        default: "none"
+        default: "snyk"
         type: string
 
       severity_threshold:
@@ -50,7 +50,7 @@ on:
 # Here we are going to set up the Profile input rules
 jobs:
   validate_profile:
-    name: Validate Profile and Required SCA_scan
+    name: Validate Profile and Required Scans
     runs-on: ubuntu-latest
     env:
       PROFILE: ${{ inputs.PROFILE }}
@@ -61,6 +61,7 @@ jobs:
           echo "SCA_scan = ${{ inputs.SCA_scan }}"
           echo "SAST_scan = ${{ inputs.SAST_scan }}"
           echo "IAC_scan = ${{ inputs.IAC_scan }}"
+          echo "CONTAINER_scan = ${{ inputs.CONTAINER_scan }}"
 
           if [ "$PROFILE" = "app" ]; then
             echo "Validating App profile requirements (SCA and/or SAST)..."
@@ -72,18 +73,20 @@ jobs:
             fi
           elif [ "$PROFILE" = "iac" ]; then
             echo "Validating IaC profile requirements (IaC Scan)..."
-            if [ "${{ inputs.IAC_scan }}" != "snyk" ]; then
+            if [ "${{ inputs.IAC_scan }}" = "snyk" ]; then
+              echo "IaC profile validation passed."
+            else
               echo "Error: For 'iac' profile, IAC_scan must be set to 'snyk'."
-              exit 1
+              exit 1              
             fi
-            echo "IaC profile validation passed."
           elif [ "$PROFILE" = "image_scan" ]; then
             echo "Validating Container Image Scan profile requirements..."
-            if [ "${{ inputs.CONTAINER_scan }}" != "snyk" ]; then
+            if [ "${{ inputs.CONTAINER_scan }}" = "snyk" ]; then
+              echo "Image scan profile validation passed."
+            else
               echo "Error: For 'image_scan' profile, CONTAINER_scan must be set to 'snyk'."
-              exit 1
+              exit 1              
             fi
-            echo "Image scan profile validation passed."
           else
             echo "Error: Invalid PROFILE value: '${PROFILE}'. Must be 'app', 'iac', or 'image_scan'."
             exit 1
@@ -98,7 +101,7 @@ jobs:
     name: SCA (Open Source) Scan
     runs-on: ubuntu-latest
     needs: validate_profile
-    if: inputs.PROFILE == 'app'
+    if: inputs.PROFILE == 'app' && inputs.SCA_scan == 'snyk'
     env:
       SNYK_SEVERITY: ${{ inputs.severity_threshold == 'none' && 'low' || 'high' }}
 
@@ -166,7 +169,7 @@ jobs:
     name: SAST (Code) Scan
     runs-on: ubuntu-latest
     needs: validate_profile
-    if: inputs.PROFILE == 'app'
+    if: inputs.PROFILE == 'app' && inputs.SAST_scan == 'snyk'
     env:
       SNYK_SEVERITY: ${{ inputs.severity_threshold == 'none' && 'low' || 'high' }}
 
@@ -294,7 +297,7 @@ jobs:
     name: Container Scan
     runs-on: ubuntu-latest
     needs: validate_profile
-    if: inputs.CONTAINER_scan == 'snyk'
+    if: inputs.PROFILE == 'image_scan'
     env:
       SNYK_SEVERITY: ${{ inputs.severity_threshold == 'none' && 'low' || 'high' }}
 
