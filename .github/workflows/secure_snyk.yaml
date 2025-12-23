@@ -349,9 +349,9 @@ jobs:
             --json \
             --org=${{ secrets.Snyk_Org }} > container-monitor.json
 
-          SNAPSHOT_URL=$(grep -o '"uri": *"[^"]*"' container-monitor.json)
+          SNAPSHOT_URL=$(jq -r '.[].uri' container-monitor.json)
           echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
-          
+
       - name: Display Container Snapshot Link
         run: |
           echo "Explore this Snapshot: ${{ steps.container_monitor.outputs.snapshot-url }}"
