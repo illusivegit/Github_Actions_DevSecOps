@@ -12,23 +12,23 @@ on:
       SCA_scan:
         description: "App profile: enable SCA (set 'snyk' to run)"
         required: false
-        default: "snyk"
+        default: "none"
         type: string
 
       SAST_scan:
         description: "App profile: enable SAST (set 'snyk' to run)"
         required: false
-        default: "snyk"
+        default: "none"
         type: string
 
       IAC_scan:
         description: "IaC profile: enable IaC (set 'snyk' to run)"
         required: false
-        default: "snyk"
+        default: "none"
         type: string
 
       CONTAINER_scan:
-        description: "Optional: enable container scan(set 'snyk' to run)"
+        description: "Optional: enable Container Image Scan (set 'snyk' to run)"
         required: false
         default: "none"
         type: string
@@ -63,12 +63,13 @@ jobs:
           echo "IAC_scan = ${{ inputs.IAC_scan }}"
 
           if [ "$PROFILE" = "app" ]; then
-            echo "Validating App profile requirements (SCA + SAST)..."
-            if [ "${{ inputs.SCA_scan }}" != "snyk" ] || [ "${{ inputs.SAST_scan }}" != "snyk" ]; then
-              echo "Error: For 'app' profile, both SCA_scan and SAST_scan must be set to 'snyk'."
+            echo "Validating App profile requirements (SCA and/or SAST)..."
+            if [ "${{ inputs.SCA_scan }}" = "snyk" ] || [ "${{ inputs.SAST_scan }}" = "snyk" ]; then
+              echo "App profile validation passed."
+            else
+              echo "Error: For 'app' profile, at least one of SCA_scan or SAST_scan must be set to 'snyk'."
               exit 1
             fi
-            echo "App profile validation passed."
           elif [ "$PROFILE" = "iac" ]; then
             echo "Validating IaC profile requirements (IaC Scan)..."
             if [ "${{ inputs.IAC_scan }}" != "snyk" ]; then
@@ -76,8 +77,15 @@ jobs:
               exit 1
             fi
             echo "IaC profile validation passed."
+          elif [ "$PROFILE" = "image_scan" ]; then
+            echo "Validating Container Image Scan profile requirements..."
+            if [ "${{ inputs.CONTAINER_scan }}" != "snyk" ]; then
+              echo "Error: For 'image_scan' profile, CONTAINER_scan must be set to 'snyk'."
+              exit 1
+            fi
+            echo "Image scan profile validation passed."
           else
-            echo "Error: Invalid PROFILE value: '${PROFILE}'. Must be 'app' or 'iac'."
+            echo "Error: Invalid PROFILE value: '${PROFILE}'. Must be 'app', 'iac', or 'image_scan'."
             exit 1
           fi
 

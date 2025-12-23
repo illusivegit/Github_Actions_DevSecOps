@@ -8,21 +8,58 @@ on:
         required: true
         type: choice
         options:
-          - app_happy
-          - app_fail_validation
-          - iac_happy
-          - iac_fail_validation
-          - container_only
-          - severity_none_app
+          - sca
+          - sast
+          - iac
+          - image_scan
+          - sca+sast
+          - sca+iac
+          - sca+image_scan
+          - sast+iac
+          - sast+image_scan
+          - iac+image_scan
+          - sca+sast+iac
+          - sca+sast+image_scan
+          - sca+iac+image_scan
+          - sast+iac+image_scan
+          - sca+sast+iac+image_scan
 
 jobs:
-  call_app_happy:
-    if: inputs.scenario == 'app_happy'
+  sca:
+    if: inputs.scenario == 'sca'
     uses: ./.github/workflows/secure_snyk.yaml
     with:
       PROFILE: app
       SCA_scan: snyk
+      SAST_scan: none
+      IAC_scan: none
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sast:
+    if: inputs.scenario == 'sast'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: app
+      SCA_scan: none
       SAST_scan: snyk
+      IAC_scan: none
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  iac:
+    if: inputs.scenario == 'iac'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: iac
+      SCA_scan: none
+      SAST_scan: none
       IAC_scan: snyk
       CONTAINER_scan: none
       severity_threshold: high
@@ -30,65 +67,352 @@ jobs:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       Snyk_Org: ${{ secrets.SNYK_ORG }}
 
-  call_app_fail_validation:
-    if: inputs.scenario == 'app_fail_validation'
+  image_scan:
+    if: inputs.scenario == 'image_scan'
     uses: ./.github/workflows/secure_snyk.yaml
     with:
-      PROFILE: app
-      SCA_scan: none      # <- should fail validate_profile
-      SAST_scan: snyk
-      CONTAINER_scan: none
-      severity_threshold: high
-    secrets:
-      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      Snyk_Org: ${{ secrets.SNYK_ORG }}
-
-  call_iac_happy:
-    if: inputs.scenario == 'iac_happy'
-    uses: ./.github/workflows/secure_snyk.yaml
-    with:
-      PROFILE: iac
-      IAC_scan: snyk
-      CONTAINER_scan: none
-      severity_threshold: high
-    secrets:
-      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      Snyk_Org: ${{ secrets.SNYK_ORG }}
-
-  call_iac_fail_validation:
-    if: inputs.scenario == 'iac_fail_validation'
-    uses: ./.github/workflows/secure_snyk.yaml
-    with:
-      PROFILE: iac
-      IAC_scan: none      # <- should fail validate_profile
-      CONTAINER_scan: none
-      severity_threshold: high
-    secrets:
-      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      Snyk_Org: ${{ secrets.SNYK_ORG }}
-
-  call_container_only:
-    if: inputs.scenario == 'container_only'
-    uses: ./.github/workflows/secure_snyk.yaml
-    with:
-      PROFILE: app        # profile doesn't matter for container job as written
-      SCA_scan: snyk
-      SAST_scan: snyk
+      PROFILE: image_scan
+      SCA_scan: none
+      SAST_scan: none
+      IAC_scan: none
       CONTAINER_scan: snyk
       severity_threshold: high
     secrets:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       Snyk_Org: ${{ secrets.SNYK_ORG }}
 
-  call_severity_none_app:
-    if: inputs.scenario == 'severity_none_app'
+  sca_sast:
+    if: inputs.scenario == 'sca+sast'
     uses: ./.github/workflows/secure_snyk.yaml
     with:
       PROFILE: app
       SCA_scan: snyk
       SAST_scan: snyk
+      IAC_scan: none
       CONTAINER_scan: none
-      severity_threshold: none   # <- should echo enforced "low"
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sca_iac_app:
+    if: inputs.scenario == 'sca+iac'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: app
+      SCA_scan: snyk
+      SAST_scan: none
+      IAC_scan: none
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sca_iac_iac:
+    if: inputs.scenario == 'sca+iac'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: iac
+      SCA_scan: none
+      SAST_scan: none
+      IAC_scan: snyk
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sca_image_scan_app:
+    if: inputs.scenario == 'sca+image_scan'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: app
+      SCA_scan: snyk
+      SAST_scan: none
+      IAC_scan: none
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sca_image_scan_container:
+    if: inputs.scenario == 'sca+image_scan'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: image_scan
+      SCA_scan: none
+      SAST_scan: none
+      IAC_scan: none
+      CONTAINER_scan: snyk
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sast_iac_app:
+    if: inputs.scenario == 'sast+iac'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: app
+      SCA_scan: none
+      SAST_scan: snyk
+      IAC_scan: none
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sast_iac_iac:
+    if: inputs.scenario == 'sast+iac'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: iac
+      SCA_scan: none
+      SAST_scan: none
+      IAC_scan: snyk
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sast_image_scan_app:
+    if: inputs.scenario == 'sast+image_scan'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: app
+      SCA_scan: none
+      SAST_scan: snyk
+      IAC_scan: none
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sast_image_scan_container:
+    if: inputs.scenario == 'sast+image_scan'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: image_scan
+      SCA_scan: none
+      SAST_scan: none
+      IAC_scan: none
+      CONTAINER_scan: snyk
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  iac_image_scan_iac:
+    if: inputs.scenario == 'iac+image_scan'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: iac
+      SCA_scan: none
+      SAST_scan: none
+      IAC_scan: snyk
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  iac_image_scan_container:
+    if: inputs.scenario == 'iac+image_scan'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: image_scan
+      SCA_scan: none
+      SAST_scan: none
+      IAC_scan: none
+      CONTAINER_scan: snyk
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sca_sast_iac_app:
+    if: inputs.scenario == 'sca+sast+iac'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: app
+      SCA_scan: snyk
+      SAST_scan: snyk
+      IAC_scan: none
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sca_sast_iac_iac:
+    if: inputs.scenario == 'sca+sast+iac'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: iac
+      SCA_scan: none
+      SAST_scan: none
+      IAC_scan: snyk
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sca_sast_image_scan_app:
+    if: inputs.scenario == 'sca+sast+image_scan'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: app
+      SCA_scan: snyk
+      SAST_scan: snyk
+      IAC_scan: none
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sca_sast_image_scan_container:
+    if: inputs.scenario == 'sca+sast+image_scan'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: image_scan
+      SCA_scan: none
+      SAST_scan: none
+      IAC_scan: none
+      CONTAINER_scan: snyk
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sca_iac_image_scan_app:
+    if: inputs.scenario == 'sca+iac+image_scan'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: app
+      SCA_scan: snyk
+      SAST_scan: none
+      IAC_scan: none
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sca_iac_image_scan_iac:
+    if: inputs.scenario == 'sca+iac+image_scan'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: iac
+      SCA_scan: none
+      SAST_scan: none
+      IAC_scan: snyk
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sca_iac_image_scan_container:
+    if: inputs.scenario == 'sca+iac+image_scan'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: image_scan
+      SCA_scan: none
+      SAST_scan: none
+      IAC_scan: none
+      CONTAINER_scan: snyk
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sast_iac_image_scan_app:
+    if: inputs.scenario == 'sast+iac+image_scan'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: app
+      SCA_scan: none
+      SAST_scan: snyk
+      IAC_scan: none
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sast_iac_image_scan_iac:
+    if: inputs.scenario == 'sast+iac+image_scan'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: iac
+      SCA_scan: none
+      SAST_scan: none
+      IAC_scan: snyk
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sast_iac_image_scan_container:
+    if: inputs.scenario == 'sast+iac+image_scan'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: image_scan
+      SCA_scan: none
+      SAST_scan: none
+      IAC_scan: none
+      CONTAINER_scan: snyk
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sca_sast_iac_image_scan_app:
+    if: inputs.scenario == 'sca+sast+iac+image_scan'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: app
+      SCA_scan: snyk
+      SAST_scan: snyk
+      IAC_scan: none
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sca_sast_iac_image_scan_iac:
+    if: inputs.scenario == 'sca+sast+iac+image_scan'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: iac
+      SCA_scan: none
+      SAST_scan: none
+      IAC_scan: snyk
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
+
+  sca_sast_iac_image_scan_container:
+    if: inputs.scenario == 'sca+sast+iac+image_scan'
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: image_scan
+      SCA_scan: none
+      SAST_scan: none
+      IAC_scan: none
+      CONTAINER_scan: snyk
+      severity_threshold: high
     secrets:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       Snyk_Org: ${{ secrets.SNYK_ORG }}
