@@ -298,7 +298,12 @@ jobs:
         if: always()
         run: |
           echo "Explore this Report: ${{ steps.iac.outputs.report-url }}"
-
+          
+          # Only add to summary if the URL actually exists
+          if [ -n "${{ steps.iac.outputs.report-url }}" ]; then
+            echo "### 🏗️ Infrastructure as Code Report" >> $GITHUB_STEP_SUMMARY
+            echo "Review the IaC security findings here: [View Report](${{ steps.iac.outputs.report-url }})" >> $GITHUB_STEP_SUMMARY
+          fi
   #
   # 5 Container Scan Job (optional)
   #
@@ -331,25 +336,18 @@ jobs:
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
       - name: Run Container scan
+        id: container_test
+        shell: bash
         run: |
-          echo "Running Container scan with severity threshold: $SNYK_SEVERITY"
-
           set +e
           snyk container test training-image:latest \
-            --severity-threshold=$SNYK_SEVERITY \
-            --org=${{ secrets.Snyk_Org }}
-          EXIT_CODE=$?
-          set -e
-
-          if [ "$EXIT_CODE" -ne 0 ]; then
-            echo "This build failed due to High/Critical (or higher than threshold) Container issues."
-            echo "Please view the Snyk report to remediate the issues."
-            exit $EXIT_CODE
-          else
-            echo "No issues at or above the severity threshold ($SNYK_SEVERITY) detected in Container scan."
-          fi
+            --severity-threshold="$SNYK_SEVERITY" \
+            --org="${{ secrets.Snyk_Org }}"
+          echo "exit-code=$?" >> "$GITHUB_OUTPUT"
+          exit 0
 
       - name: Monitor Container Results to SNYK UI (emit ALL links)
+        if: always()
         id: container_monitor
         shell: bash
         run: |
@@ -377,30 +375,33 @@ jobs:
             printf '%s\n' "${URLS[@]}"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
-           
+
       - name: Display Container Report Links
         if: always()
         run: |
           echo "Explore these Reports:"
           echo "${{ steps.container_monitor.outputs.container-report-urls }}"
+              echo "### 🛡️ Snyk Container Reports" >> $GITHUB_STEP_SUMMARY
+    
+          # Check if we actually have links to avoid printing an empty list
+          if [ -n "${{ steps.container_monitor.outputs.container-report-urls }}" ]; then
+            echo "The following reports are available for this scan:" >> $GITHUB_STEP_SUMMARY
 
-      # - name: Monitor Container Results to SNYK UI
-      #   id: container_monitor
-      #   run: |
-      #     echo "Uploading Container report to Snyk UI..."
-      #     snyk container monitor training-image:latest \
-      #       --severity-threshold=$SNYK_SEVERITY \
-      #       --json \
-      #       --org=${{ secrets.Snyk_Org }} > container-monitor.json
+            # Use a loop to format each line as a Markdown bullet point
+            echo "${{ steps.container_monitor.outputs.container-report-urls }}" | while read -r line; do
+              echo "- [$line]($line)" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "⚠️ No report links were generated." >> $GITHUB_STEP_SUMMARY
+          fi
 
-      #     cat "container-monitor.json"
-      #     REPORT_URL=$(grep -o '"uri": *"[^"]*"' container-monitor.json | grep -o '"[^"]*"$' | tr -d '"')
-      #     echo "$REPORT_URL"
-      #     REPORT_URI2=$(jq -r '.[].uri' container-monitor.json)
-      #     echo "$REPORT_URI2"
-      # #     echo "report-url=$REPORT_URL" >> "$GITHUB_OUTPUT"
-
-      # # - name: Display Container Report Link
-      # #   run: |
-      # #     echo "Explore this Report: ${{ steps.container_monitor.outputs.report-url }}"
+      - name: Fail job if scan failed threshold
+        if: always()
+        shell: bash
+        run: |
+          EXIT_CODE="${{ steps.container_test.outputs.exit-code }}"
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            echo "Container scan failed at threshold ($SNYK_SEVERITY). See report links above."
+            exit "$EXIT_CODE"
+          fi
 

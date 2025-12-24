@@ -18,18 +18,18 @@ jobs:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       Snyk_Org: ${{ secrets.SNYK_ORG }}
 
-  # iac_scan:
-  #   uses: ./.github/workflows/secure_snyk.yaml
-  #   with:
-  #     PROFILE: iac
-  #     SCA_scan: none
-  #     SAST_scan: none
-  #     IAC_scan: snyk
-  #     CONTAINER_scan: none
-  #     severity_threshold: high
-  #   secrets:
-  #     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-  #     Snyk_Org: ${{ secrets.SNYK_ORG }}
+  iac_scan:
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: iac
+      SCA_scan: none
+      SAST_scan: none
+      IAC_scan: snyk
+      CONTAINER_scan: none
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
 
       
 
