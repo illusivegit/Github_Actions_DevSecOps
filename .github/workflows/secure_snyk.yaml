@@ -200,7 +200,7 @@ jobs:
           TARGET_REF="${GITHUB_REF_NAME:-unknown}"
           REMOTE_URL="https://github.com/${GITHUB_REPOSITORY}.git"
 
-          echo "Running REQUIRED SAST scan with severity threshold: $SNYK_SEVERITY + uploading to SNYK UI..."
+          echo "Running REQUIRED SAST scan with severity threshold: $SNYK_SEVERITY + Uploading SAST Report to SNYK UI..."
           set +e
           snyk code test \
             --severity-threshold="$SNYK_SEVERITY" \
@@ -210,7 +210,11 @@ jobs:
             --target-reference="$TARGET_REF" \
             --remote-repo-url="$REMOTE_URL" 2>&1
           EXIT_CODE=$?
-          set -e
+          set -e     
+          
+          # Deterministic link (no projectId needed): filter org projects by name
+          REPORT_URL="https://app.snyk.io/org/${ORG_SLUG}/projects?search=${PROJECT_NAME}"
+          echo "report-url=$REPORT_URL" >> "$GITHUB_OUTPUT"
 
           if [ "$EXIT_CODE" -ne 0 ]; then
             echo "This build failed due to High/Critical (or higher than threshold) SCA issues."
@@ -218,11 +222,7 @@ jobs:
             exit $EXIT_CODE
           else
             echo "No issues at or above the severity threshold ($SNYK_SEVERITY) detected in SCA scan."
-          fi          
-          
-          # Deterministic link (no projectId needed): filter org projects by name
-          REPORT_URL="https://app.snyk.io/org/${ORG_SLUG}/projects?search=${PROJECT_NAME}"
-          echo "report-url=$REPORT_URL" >> "$GITHUB_OUTPUT"
+          fi     
 
       - name: Display SAST Report Link
         if: always()
@@ -253,10 +253,10 @@ jobs:
       - name: Authenticate Snyk
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      - name: Run REQUIRED IaC scan + upload
+      - name: Run REQUIRED IaC scan + Upload IaC Report (and emit link)
         id: iac
         run: |
-          echo "Running REQUIRED IaC scan with severity threshold: $SNYK_SEVERITY"
+          echo "Running REQUIRED IaC scan with severity threshold: $SNYK_SEVERITY + Uploading IaC Report to SNYK UI..."
 
           set +e
           snyk iac test \
