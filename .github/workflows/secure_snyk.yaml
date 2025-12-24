@@ -257,7 +257,8 @@ jobs:
       - name: Authenticate Snyk
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      - name: Run REQUIRED IaC scan
+      - name: Run REQUIRED IaC scan + upload
+        id: iac
         run: |
           echo "Running REQUIRED IaC scan with severity threshold: $SNYK_SEVERITY"
 
@@ -286,28 +287,10 @@ jobs:
             echo "meta.projectId=$(jq -r '.meta.projectId // empty' iac-report.json)"
           fi
 
-
-      # - name: Monitor IaC Results to SNYK UI
-      #   if: always()
-      #   id: iac_monitor
-      #   run: |
-      #     echo "Uploading IaC snapshot to Snyk UI..."
-      #     snyk iac monitor \
-      #       --severity-threshold=$SNYK_SEVERITY \
-      #       --json \
-      #       --org=${{ secrets.Snyk_Org }} > iac-monitor.json
-
-      #     cat "iac-monitor.json"
-      #     SNAPSHOT_URL2=$(grep -o '"uri": *"[^"]*"' iac-monitor.json | grep -o '"[^"]*"$' | tr -d '"')
-      #     echo "$SNAPSHOT_URL2"
-      #     SNAPSHOT_URL=$(jq -r '.uri' iac-monitor.json)
-      #     echo "$SNAPSHOT_URL"
-      #     # echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
-
-      # # - name: Display IaC Snapshot Link
-      # #   if: always()
-      # #   run: |
-      # #     echo "Explore this Snapshot: ${{ steps.iac_monitor.outputs.snapshot-url }}"
+      - name: Display IaC Snapshot Link
+        if: always()
+        run: |
+          echo "Explore this Snapshot: ${{ steps.iac.outputs.report-url }}"
 
   #
   # 5 Container Scan Job (optional)
