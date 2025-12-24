@@ -349,23 +349,58 @@ jobs:
             echo "No issues at or above the severity threshold ($SNYK_SEVERITY) detected in Container scan."
           fi
 
-      - name: Monitor Container Results to SNYK UI
+      - name: Monitor Container Results to SNYK UI (emit ALL links)
         id: container_monitor
+        shell: bash
         run: |
           echo "Uploading Container report to Snyk UI..."
           snyk container monitor training-image:latest \
-            --severity-threshold=$SNYK_SEVERITY \
+            --severity-threshold="$SNYK_SEVERITY" \
             --json \
-            --org=${{ secrets.Snyk_Org }} > container-monitor.json
+            --org="${{ secrets.Snyk_Org }}" > container-monitor.json
 
-          cat "container-monitor.json"
-          REPORT_URL=$(grep -o '"uri": *"[^"]*"' container-monitor.json | grep -o '"[^"]*"$' | tr -d '"')
-          echo "$REPORT_URL"
-          REPORT_URI2=$(jq -r '.[].uri' container-monitor.json)
-          echo "$REPORT_URI2"
-      #     echo "report-url=$REPORT_URL" >> "$GITHUB_OUTPUT"
+          # Extract all non-empty .uri fields from the JSON array
+          mapfile -t URLS < <(jq -r '.[] | .uri? // empty' container-monitor.json)
 
-      # - name: Display Container Report Link
+          if [ "${#URLS[@]}" -eq 0 ]; then
+            echo "No report URIs found in container-monitor.json"
+            echo "container-report-urls=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Found ${#URLS[@]} report link(s):"
+          printf ' - %s\n' "${URLS[@]}"
+
+          # Publish as a multiline output (best for multiple links)
+          {
+            echo "container-report-urls<<EOF"
+            printf '%s\n' "${URLS[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+           
+      - name: Display Container Report Links
+        if: always()
+        run: |
+          echo "Explore these Reports:"
+          echo "${{ steps.container_monitor.outputs.container-report-urls }}"
+
+      # - name: Monitor Container Results to SNYK UI
+      #   id: container_monitor
       #   run: |
-      #     echo "Explore this Report: ${{ steps.container_monitor.outputs.report-url }}"
+      #     echo "Uploading Container report to Snyk UI..."
+      #     snyk container monitor training-image:latest \
+      #       --severity-threshold=$SNYK_SEVERITY \
+      #       --json \
+      #       --org=${{ secrets.Snyk_Org }} > container-monitor.json
+
+      #     cat "container-monitor.json"
+      #     REPORT_URL=$(grep -o '"uri": *"[^"]*"' container-monitor.json | grep -o '"[^"]*"$' | tr -d '"')
+      #     echo "$REPORT_URL"
+      #     REPORT_URI2=$(jq -r '.[].uri' container-monitor.json)
+      #     echo "$REPORT_URI2"
+      # #     echo "report-url=$REPORT_URL" >> "$GITHUB_OUTPUT"
+
+      # # - name: Display Container Report Link
+      # #   run: |
+      # #     echo "Explore this Report: ${{ steps.container_monitor.outputs.report-url }}"
 
