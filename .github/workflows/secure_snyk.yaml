@@ -195,8 +195,6 @@ jobs:
         id: sast_monitor
         shell: bash
         run: |
-          set -euo pipefail
-
           ORG_SLUG="bleeng089"
           PROJECT_NAME="Github_Actions_DevSecOps"
           TARGET_REF="${GITHUB_REF_NAME:-unknown}"
@@ -211,9 +209,17 @@ jobs:
             --project-name="$PROJECT_NAME" \
             --target-reference="$TARGET_REF" \
             --remote-repo-url="$REMOTE_URL" 2>&1
-          rc=$?
+          EXIT_CODE=$?
           set -e
 
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            echo "This build failed due to High/Critical (or higher than threshold) SCA issues."
+            echo "Please view the Snyk report to remediate the issues."
+            exit $EXIT_CODE
+          else
+            echo "No issues at or above the severity threshold ($SNYK_SEVERITY) detected in SCA scan."
+          fi          
+          
           # Deterministic link (no projectId needed): filter org projects by name
           REPORT_URL="https://app.snyk.io/org/${ORG_SLUG}/projects?search=${PROJECT_NAME}"
           echo "report-url=$REPORT_URL" >> "$GITHUB_OUTPUT"
@@ -222,80 +228,6 @@ jobs:
         if: always()
         run: |
           echo "Explore this Report: ${{ steps.sast_monitor.outputs.report-url }}"
-
-
-
-
-
-
-
-
-
-
-
-
-      # - name: Run SAST scan and write JSON
-      #   id: sast
-      #   shell: bash
-      #   run: |
-      #     set -euo pipefail
-      #     echo "Running SAST with severity threshold: $SNYK_SEVERITY"
-          
-      #     echo "running: snyk code test --help" && snyk code test --help
-
-      #     echo "running: snyk -v" && snyk -v
-          
-      #     set +e
-      #     snyk code test \
-      #       --severity-threshold="$SNYK_SEVERITY" \
-      #       --json-file-output="sast-report.json" \
-      #       --org="${{ secrets.Snyk_Org }}"
-      #     set -e
-      #     cat "sast-report.json"
-
-          
-
-        # - name: Run REQUIRED SAST scan
-      #   run: |
-      #     echo "Running REQUIRED SAST scan with severity threshold: $SNYK_SEVERITY"
-
-      #     set +e
-      #     snyk code test \
-      #       --severity-threshold=$SNYK_SEVERITY \
-      #       --org=${{ secrets.Snyk_Org }}
-      #     EXIT_CODE=$?
-      #     set -e
-
-      #     if [ "$EXIT_CODE" -ne 0 ]; then
-      #       echo "This build failed due to High/Critical (or higher than threshold) SAST issues."
-      #       echo "Please view the Snyk report to remediate the issues."
-      #       exit $EXIT_CODE
-      #     else
-      #       echo "No issues at or above the severity threshold ($SNYK_SEVERITY) detected in SAST scan."
-      #     fi
-
-      # - name: Upload SAST Report / Report
-      #   if: always()
-      #   id: sast_monitor
-      #   run: |
-      #     echo "Generating SAST report with severity threshold: $SNYK_SEVERITY"
-      #     snyk code test \
-      #       --severity-threshold=$SNYK_SEVERITY \
-      #       --report \
-      #       --json \
-      #       --org=${{ secrets.Snyk_Org }} > sast-report.json
-          
-      #     cat "sast-report.json"
-      #     REPORT_URL2=$(grep -o '"uri": *"[^"]*"' sast-report.json | grep -o '"[^"]*"$' | tr -d '"')
-      #     echo "$REPORT_URL2"
-      #     REPORT_URL=$(jq -r '.uri' sast-report.json)
-      #     echo "$REPORT_URL"
-      #     echo "report-url=$REPORT_URL" >> "$GITHUB_OUTPUT"
-
-      # - name: Display SAST Report Link
-      #   if: always()
-      #   run: |
-      #     echo "Explore this Report: ${{ steps.sast_monitor.outputs.report-url }}"
 
   #
   # 4 IaC Scan Job
