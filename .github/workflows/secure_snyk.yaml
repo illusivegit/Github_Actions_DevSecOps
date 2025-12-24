@@ -220,14 +220,18 @@ jobs:
             --report \
             --json \
             --org=${{ secrets.Snyk_Org }} > sast-report.json
-
+          
+          cat "sast-report.json"
+          SNAPSHOT_URL2=$(grep -o '"uri": *"[^"]*"' sast-report.json | grep -o '"[^"]*"$' | tr -d '"')
+          echo "$SNAPSHOT_URL2"
           SNAPSHOT_URL=$(jq -r '.uri' sast-report.json)
-          echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
+          echo "$SNAPSHOT_URL"
+      #     echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Display SAST Snapshot Link
-        if: always()
-        run: |
-          echo "Explore this Snapshot: ${{ steps.sast_monitor.outputs.snapshot-url }}"
+      # - name: Display SAST Snapshot Link
+      #   if: always()
+      #   run: |
+      #     echo "Explore this Snapshot: ${{ steps.sast_monitor.outputs.snapshot-url }}"
 
   #
   # 4 IaC Scan Job
@@ -282,13 +286,17 @@ jobs:
             --json \
             --org=${{ secrets.Snyk_Org }} > iac-monitor.json
 
+          cat "iac-monitor.json"
+          SNAPSHOT_URL2=$(grep -o '"uri": *"[^"]*"' iac-monitor.json | grep -o '"[^"]*"$' | tr -d '"')
+          echo "$SNAPSHOT_URL2"
           SNAPSHOT_URL=$(jq -r '.uri' iac-monitor.json)
-          echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
+          echo "$SNAPSHOT_URL"
+          # echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Display IaC Snapshot Link
-        if: always()
-        run: |
-          echo "Explore this Snapshot: ${{ steps.iac_monitor.outputs.snapshot-url }}"
+      # - name: Display IaC Snapshot Link
+      #   if: always()
+      #   run: |
+      #     echo "Explore this Snapshot: ${{ steps.iac_monitor.outputs.snapshot-url }}"
 
   #
   # 5 Container Scan Job (optional)
@@ -349,10 +357,13 @@ jobs:
             --json \
             --org=${{ secrets.Snyk_Org }} > container-monitor.json
 
+          cat "container-monitor.json"
           SNAPSHOT_URL=$(grep -o '"uri": *"[^"]*"' container-monitor.json | grep -o '"[^"]*"$' | tr -d '"')
-          SNAPSHOT_URI2=$(jq -r '.[].uri' container-monitor.json)
-
-      - name: Display Container Snapshot Link
-        run: |
           echo "$SNAPSHOT_URL"
+          SNAPSHOT_URI2=$(jq -r '.[].uri' container-monitor.json)
           echo "$SNAPSHOT_URI2"
+      #     echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
+
+      # - name: Display Container Snapshot Link
+      #   run: |
+      #     echo "Explore this Snapshot: ${{ steps.container_monitor.outputs.snapshot-url }}"
