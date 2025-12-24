@@ -161,6 +161,11 @@ jobs:
         if: always()
         run: |
           echo "Explore this Report: ${{ steps.sca_monitor.outputs.report-url }}"
+          
+          if [ -n "${{ steps.sca_monitor.outputs.report-url }}" ]; then
+            echo "### 📦 Snyk SCA (Open Source) Report" >> $GITHUB_STEP_SUMMARY
+            echo "Review the SCA security findings here: [View Report](${{ steps.sca_monitor.outputs.report-url }})" >> $GITHUB_STEP_SUMMARY
+          fi
 
   #
   # 3 SAST Code Scan Job
@@ -239,6 +244,11 @@ jobs:
         if: always()
         run: |
           echo "Explore this Report: ${{ steps.sast_monitor.outputs.report-url }}"
+          
+          if [ -n "${{ steps.sast_monitor.outputs.report-url }}" ]; then
+            echo "### 💻 Snyk SAST (Code) Report" >> $GITHUB_STEP_SUMMARY
+            echo "Review the SAST security findings here: [View Report](${{ steps.sast_monitor.outputs.report-url }})" >> $GITHUB_STEP_SUMMARY
+          fi
 
   #
   # 4 IaC Scan Job
@@ -298,8 +308,7 @@ jobs:
         if: always()
         run: |
           echo "Explore this Report: ${{ steps.iac.outputs.report-url }}"
-          
-          # Only add to summary if the URL actually exists
+
           if [ -n "${{ steps.iac.outputs.report-url }}" ]; then
             echo "### 🏗️ Infrastructure as Code Report" >> $GITHUB_STEP_SUMMARY
             echo "Review the IaC security findings here: [View Report](${{ steps.iac.outputs.report-url }})" >> $GITHUB_STEP_SUMMARY
