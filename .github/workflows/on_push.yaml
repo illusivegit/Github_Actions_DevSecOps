@@ -5,18 +5,18 @@ on:
     branches: [ main ]  # adjust as needed
 
 jobs:
-  # container_scan:
-  #   uses: ./.github/workflows/secure_snyk.yaml
-  #   with:
-  #     PROFILE: image_scan
-  #     SCA_scan: none
-  #     SAST_scan: none
-  #     IAC_scan: none
-  #     CONTAINER_scan: snyk
-  #     severity_threshold: high
-  #   secrets:
-  #     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-  #     Snyk_Org: ${{ secrets.SNYK_ORG }}
+  container_scan:
+    uses: ./.github/workflows/secure_snyk.yaml
+    with:
+      PROFILE: image_scan
+      SCA_scan: none
+      SAST_scan: none
+      IAC_scan: none
+      CONTAINER_scan: snyk
+      severity_threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      Snyk_Org: ${{ secrets.SNYK_ORG }}
 
   # iac_scan:
   #   uses: ./.github/workflows/secure_snyk.yaml
@@ -33,15 +33,15 @@ jobs:
 
       
 
-  sast_sca_scan:
-    uses: ./.github/workflows/secure_snyk.yaml
-    with:
-      PROFILE: app
-      SCA_scan: snyk
-      SAST_scan: none
-      IAC_scan: none
-      CONTAINER_scan: none
-      severity_threshold: high
-    secrets:
-      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      Snyk_Org: ${{ secrets.SNYK_ORG }}
+  # sast_sca_scan:
+  #   uses: ./.github/workflows/secure_snyk.yaml
+  #   with:
+  #     PROFILE: app
+  #     SCA_scan: snyk
+  #     SAST_scan: none
+  #     IAC_scan: none
+  #     CONTAINER_scan: none
+  #     severity_threshold: high
+  #   secrets:
+  #     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  #     Snyk_Org: ${{ secrets.SNYK_ORG }}
