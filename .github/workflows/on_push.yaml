@@ -38,7 +38,7 @@ jobs:
     with:
       PROFILE: app
       SCA_scan: snyk
-      SAST_scan: synk
+      SAST_scan: snyk
       IAC_scan: none
       CONTAINER_scan: none
       severity_threshold: high
