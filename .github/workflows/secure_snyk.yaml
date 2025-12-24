@@ -263,40 +263,51 @@ jobs:
 
           set +e
           snyk iac test \
-            --severity-threshold=$SNYK_SEVERITY \
-            --org=${{ secrets.Snyk_Org }}
+            --severity-threshold="$SNYK_SEVERITY" \
+            --org="${{ secrets.Snyk_Org }}" \
+            --report \
+            --json > iac-report.json
           EXIT_CODE=$?
           set -e
 
+          echo "=== Raw JSON output ==="
+          cat iac-report.json
+
+          # Extract a URL if Snyk returns one (field name can vary by CLI version)
+          REPORT_URL="$(jq -r '.. | .uri? // .reportUrl? // .url? // empty' iac-report.json | head -n1)"
+          echo "Report URL: $REPORT_URL"
+          echo "report-url=$REPORT_URL" >> "$GITHUB_OUTPUT"
+
           if [ "$EXIT_CODE" -ne 0 ]; then
-            echo "This build failed due to High/Critical (or higher than threshold) IaC issues."
-            echo "Please view the Snyk snapshot to remediate the issues."
-            exit $EXIT_CODE
+            echo "This build failed due to IaC issues at/above threshold ($SNYK_SEVERITY)."
+            echo "Snyk report: $REPORT_URL"
+            exit "$EXIT_CODE"
           else
-            echo "No issues at or above the severity threshold ($SNYK_SEVERITY) detected in IaC scan."
+            echo "No issues at or above severity threshold ($SNYK_SEVERITY)."
+            echo "Snyk report: $REPORT_URL"
           fi
 
-      - name: Monitor IaC Results to SNYK UI
-        if: always()
-        id: iac_monitor
-        run: |
-          echo "Uploading IaC snapshot to Snyk UI..."
-          snyk iac monitor \
-            --severity-threshold=$SNYK_SEVERITY \
-            --json \
-            --org=${{ secrets.Snyk_Org }} > iac-monitor.json
-
-          cat "iac-monitor.json"
-          SNAPSHOT_URL2=$(grep -o '"uri": *"[^"]*"' iac-monitor.json | grep -o '"[^"]*"$' | tr -d '"')
-          echo "$SNAPSHOT_URL2"
-          SNAPSHOT_URL=$(jq -r '.uri' iac-monitor.json)
-          echo "$SNAPSHOT_URL"
-          # echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
-
-      # - name: Display IaC Snapshot Link
+      # - name: Monitor IaC Results to SNYK UI
       #   if: always()
+      #   id: iac_monitor
       #   run: |
-      #     echo "Explore this Snapshot: ${{ steps.iac_monitor.outputs.snapshot-url }}"
+      #     echo "Uploading IaC snapshot to Snyk UI..."
+      #     snyk iac monitor \
+      #       --severity-threshold=$SNYK_SEVERITY \
+      #       --json \
+      #       --org=${{ secrets.Snyk_Org }} > iac-monitor.json
+
+      #     cat "iac-monitor.json"
+      #     SNAPSHOT_URL2=$(grep -o '"uri": *"[^"]*"' iac-monitor.json | grep -o '"[^"]*"$' | tr -d '"')
+      #     echo "$SNAPSHOT_URL2"
+      #     SNAPSHOT_URL=$(jq -r '.uri' iac-monitor.json)
+      #     echo "$SNAPSHOT_URL"
+      #     # echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
+
+      # # - name: Display IaC Snapshot Link
+      # #   if: always()
+      # #   run: |
+      # #     echo "Explore this Snapshot: ${{ steps.iac_monitor.outputs.snapshot-url }}"
 
   #
   # 5 Container Scan Job (optional)
@@ -367,3 +378,5 @@ jobs:
       # - name: Display Container Snapshot Link
       #   run: |
       #     echo "Explore this Snapshot: ${{ steps.container_monitor.outputs.snapshot-url }}"
+
+
