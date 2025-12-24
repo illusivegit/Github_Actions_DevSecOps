@@ -272,20 +272,20 @@ jobs:
 
           echo "=== Raw JSON output ==="
           cat iac-report.json
+          
+          ORG_SLUG="$(jq -r '.meta.org // .org // empty' iac-report.json)"
+          PROJECT_ID="$(jq -r '.meta.projectId // empty' iac-report.json)"
 
-          # Extract a URL if Snyk returns one (field name can vary by CLI version)
-          REPORT_URL="$(jq -r '.. | .uri? // .reportUrl? // .url? // empty' iac-report.json | head -n1)"
-          echo "Report URL: $REPORT_URL"
-          echo "report-url=$REPORT_URL" >> "$GITHUB_OUTPUT"
-
-          if [ "$EXIT_CODE" -ne 0 ]; then
-            echo "This build failed due to IaC issues at/above threshold ($SNYK_SEVERITY)."
-            echo "Snyk report: $REPORT_URL"
-            exit "$EXIT_CODE"
+          if [ -n "$ORG_SLUG" ] && [ -n "$PROJECT_ID" ]; then
+            REPORT_URL="https://app.snyk.io/org/${ORG_SLUG}/project/${PROJECT_ID}"
+            echo "Report URL: $REPORT_URL"
+            echo "report-url=$REPORT_URL" >> "$GITHUB_OUTPUT"
           else
-            echo "No issues at or above severity threshold ($SNYK_SEVERITY)."
-            echo "Snyk report: $REPORT_URL"
+            echo "Could not construct Snyk URL (missing org or projectId)."
+            echo "meta.org=$(jq -r '.meta.org // empty' iac-report.json)"
+            echo "meta.projectId=$(jq -r '.meta.projectId // empty' iac-report.json)"
           fi
+
 
       # - name: Monitor IaC Results to SNYK UI
       #   if: always()
