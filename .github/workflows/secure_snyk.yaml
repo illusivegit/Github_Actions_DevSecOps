@@ -137,7 +137,7 @@ jobs:
 
           if [ "$EXIT_CODE" -ne 0 ]; then
             echo "This build failed due to High/Critical (or higher than threshold) SCA issues."
-            echo "Please view the Snyk snapshot to remediate the issues."
+            echo "Please view the Snyk report to remediate the issues."
             exit $EXIT_CODE
           else
             echo "No issues at or above the severity threshold ($SNYK_SEVERITY) detected in SCA scan."
@@ -147,20 +147,20 @@ jobs:
         if: always()
         id: sca_monitor
         run: |
-          echo "Uploading SCA snapshot to Snyk UI..."
+          echo "Uploading SCA report to Snyk UI..."
           snyk monitor \
             --all-projects \
             --severity-threshold=$SNYK_SEVERITY \
             --json \
             --org=${{ secrets.Snyk_Org }} > sca-monitor.json
 
-          SNAPSHOT_URL=$(jq -r '.uri' sca-monitor.json)
-          echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
+          REPORT_URL=$(jq -r '.uri' sca-monitor.json)
+          echo "report-url=$REPORT_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Display SCA Snapshot Link
+      - name: Display SCA Report Link
         if: always()
         run: |
-          echo "Explore this Snapshot: ${{ steps.sca_monitor.outputs.snapshot-url }}"
+          echo "Explore this Report: ${{ steps.sca_monitor.outputs.report-url }}"
 
   #
   # 3 SAST Code Scan Job
@@ -191,65 +191,37 @@ jobs:
       - name: Authenticate Snyk
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      - name: Run REQUIRED SAST scan (gate)
-        run: |
-          echo "Running REQUIRED SAST scan with severity threshold: $SNYK_SEVERITY"
-
-          set +e
-          snyk code test \
-            --severity-threshold="$SNYK_SEVERITY" \
-            --org="bleeng089"
-          EXIT_CODE=$?
-          set -e
-
-          if [ "$EXIT_CODE" -ne 0 ]; then
-            echo "This build failed due to SAST issues at/above threshold."
-            echo "A Snyk UI snapshot will be uploaded in the next step."
-            exit $EXIT_CODE
-          else
-            echo "No issues at/above threshold ($SNYK_SEVERITY) detected in SAST scan."
-          fi
-
-      - name: Upload SAST Snapshot (and emit link)
-        if: always()
+      - name: Run REQUIRED SAST scan + Upload SAST Report (and emit link)
         id: sast_monitor
         shell: bash
         run: |
           set -euo pipefail
 
           ORG_SLUG="bleeng089"
-          PROJECT_NAME="Github_Actions_DevSecOps-sast"
+          PROJECT_NAME="Github_Actions_DevSecOps"
           TARGET_REF="${GITHUB_REF_NAME:-unknown}"
           REMOTE_URL="https://github.com/${GITHUB_REPOSITORY}.git"
 
-          echo "Uploading SAST snapshot to Snyk UI..."
+          echo "Running REQUIRED SAST scan with severity threshold: $SNYK_SEVERITY + uploading to SNYK UI..."
           set +e
-          out="$(snyk code test \
+          snyk code test \
             --severity-threshold="$SNYK_SEVERITY" \
             --org="$ORG_SLUG" \
             --report \
             --project-name="$PROJECT_NAME" \
             --target-reference="$TARGET_REF" \
-            --remote-repo-url="$REMOTE_URL" 2>&1)"
+            --remote-repo-url="$REMOTE_URL" 2>&1
           rc=$?
           set -e
 
-          printf '%s\n' "$out"
-
-          # rc 0/1 = successful scan; rc >=2 = real failure
-          if [ "$rc" -ge 2 ]; then
-            echo "Snyk Code snapshot upload failed (exit=$rc)"
-            exit "$rc"
-          fi
-
           # Deterministic link (no projectId needed): filter org projects by name
-          SNAPSHOT_URL="https://app.snyk.io/org/${ORG_SLUG}/projects?search=${PROJECT_NAME}"
-          echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
+          REPORT_URL="https://app.snyk.io/org/${ORG_SLUG}/projects?search=${PROJECT_NAME}"
+          echo "report-url=$REPORT_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Display SAST Snapshot Link
+      - name: Display SAST Report Link
         if: always()
         run: |
-          echo "Explore this Snapshot: ${{ steps.sast_monitor.outputs.snapshot-url }}"
+          echo "Explore this Report: ${{ steps.sast_monitor.outputs.report-url }}"
 
 
 
@@ -296,13 +268,13 @@ jobs:
 
       #     if [ "$EXIT_CODE" -ne 0 ]; then
       #       echo "This build failed due to High/Critical (or higher than threshold) SAST issues."
-      #       echo "Please view the Snyk snapshot to remediate the issues."
+      #       echo "Please view the Snyk report to remediate the issues."
       #       exit $EXIT_CODE
       #     else
       #       echo "No issues at or above the severity threshold ($SNYK_SEVERITY) detected in SAST scan."
       #     fi
 
-      # - name: Upload SAST Report / Snapshot
+      # - name: Upload SAST Report / Report
       #   if: always()
       #   id: sast_monitor
       #   run: |
@@ -314,16 +286,16 @@ jobs:
       #       --org=${{ secrets.Snyk_Org }} > sast-report.json
           
       #     cat "sast-report.json"
-      #     SNAPSHOT_URL2=$(grep -o '"uri": *"[^"]*"' sast-report.json | grep -o '"[^"]*"$' | tr -d '"')
-      #     echo "$SNAPSHOT_URL2"
-      #     SNAPSHOT_URL=$(jq -r '.uri' sast-report.json)
-      #     echo "$SNAPSHOT_URL"
-      #     echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
+      #     REPORT_URL2=$(grep -o '"uri": *"[^"]*"' sast-report.json | grep -o '"[^"]*"$' | tr -d '"')
+      #     echo "$REPORT_URL2"
+      #     REPORT_URL=$(jq -r '.uri' sast-report.json)
+      #     echo "$REPORT_URL"
+      #     echo "report-url=$REPORT_URL" >> "$GITHUB_OUTPUT"
 
-      # - name: Display SAST Snapshot Link
+      # - name: Display SAST Report Link
       #   if: always()
       #   run: |
-      #     echo "Explore this Snapshot: ${{ steps.sast_monitor.outputs.snapshot-url }}"
+      #     echo "Explore this Report: ${{ steps.sast_monitor.outputs.report-url }}"
 
   #
   # 4 IaC Scan Job
@@ -428,7 +400,7 @@ jobs:
 
           if [ "$EXIT_CODE" -ne 0 ]; then
             echo "This build failed due to High/Critical (or higher than threshold) Container issues."
-            echo "Please view the Snyk snapshot to remediate the issues."
+            echo "Please view the Snyk report to remediate the issues."
             exit $EXIT_CODE
           else
             echo "No issues at or above the severity threshold ($SNYK_SEVERITY) detected in Container scan."
@@ -437,21 +409,20 @@ jobs:
       - name: Monitor Container Results to SNYK UI
         id: container_monitor
         run: |
-          echo "Uploading Container snapshot to Snyk UI..."
+          echo "Uploading Container report to Snyk UI..."
           snyk container monitor training-image:latest \
             --severity-threshold=$SNYK_SEVERITY \
             --json \
             --org=${{ secrets.Snyk_Org }} > container-monitor.json
 
           cat "container-monitor.json"
-          SNAPSHOT_URL=$(grep -o '"uri": *"[^"]*"' container-monitor.json | grep -o '"[^"]*"$' | tr -d '"')
-          echo "$SNAPSHOT_URL"
-          SNAPSHOT_URI2=$(jq -r '.[].uri' container-monitor.json)
-          echo "$SNAPSHOT_URI2"
-      #     echo "snapshot-url=$SNAPSHOT_URL" >> "$GITHUB_OUTPUT"
+          REPORT_URL=$(grep -o '"uri": *"[^"]*"' container-monitor.json | grep -o '"[^"]*"$' | tr -d '"')
+          echo "$REPORT_URL"
+          REPORT_URI2=$(jq -r '.[].uri' container-monitor.json)
+          echo "$REPORT_URI2"
+      #     echo "report-url=$REPORT_URL" >> "$GITHUB_OUTPUT"
 
-      # - name: Display Container Snapshot Link
+      # - name: Display Container Report Link
       #   run: |
-      #     echo "Explore this Snapshot: ${{ steps.container_monitor.outputs.snapshot-url }}"
-
+      #     echo "Explore this Report: ${{ steps.container_monitor.outputs.report-url }}"
 
