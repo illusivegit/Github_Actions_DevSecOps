@@ -202,7 +202,7 @@ jobs:
         run: |
           set -uo pipefail
 
-          ORG_SLUG="bleeng089"
+          ORG_SLUG=""
           PROJECT_NAME="Github_Actions_DevSecOps"
           TARGET_REF="${GITHUB_REF_NAME:-unknown}"
           REMOTE_URL="https://github.com/${GITHUB_REPOSITORY}.git"
@@ -222,10 +222,10 @@ jobs:
           EXIT_CODE=${PIPESTATUS[0]}
           set -e
 
-          # Extract the Snyk "Your test results are available at:" URL from the CLI output
+          # Extract the Snyk report URL ("Test results are available at:") from the CLI output
           REPORT_URL="$(grep -Eo 'https://app\.snyk\.io/org/[^[:space:]]+' sast-monitor.log | tail -n 1 || true)"
 
-          # Fallback to your deterministic search page if we didn't find the direct link
+          # Fallback to deterministic search page if the direct link is missing
           if [ -z "$REPORT_URL" ]; then
             REPORT_URL="https://app.snyk.io/org/${ORG_SLUG}/projects?search=${PROJECT_NAME}"
           fi
@@ -233,11 +233,11 @@ jobs:
           echo "report-url=$REPORT_URL" >> "$GITHUB_OUTPUT"
 
           if [ "$EXIT_CODE" -ne 0 ]; then
-            echo "This build failed due to High/Critical (or higher than threshold) SCA issues."
+            echo "This build failed due to High/Critical (or higher than threshold) SAST issues."
             echo "Please view the Snyk report to remediate the issues."
             exit $EXIT_CODE
           else
-            echo "No issues at or above the severity threshold ($SNYK_SEVERITY) detected in SCA scan."
+            echo "No issues at or above the severity threshold ($SNYK_SEVERITY) detected in SAST scan."
           fi     
 
       - name: Display SAST Report Link
@@ -413,4 +413,3 @@ jobs:
             echo "Container scan failed at threshold ($SNYK_SEVERITY). See report links above."
             exit "$EXIT_CODE"
           fi
-
