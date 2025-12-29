@@ -33,7 +33,7 @@ on:
 jobs:
   run_secure_snyk:
     name: Run Secure Snyk Workflow
-    uses: ./.github/workflows/reusable-workflow.yaml
+    uses: ./.github/workflows/secure_snyk.yaml
     with:
       SNYK_PROFILE: ${{ inputs.SNYK_PROFILE }}
       SCA_scan: ${{ inputs.SCA_scan }}
