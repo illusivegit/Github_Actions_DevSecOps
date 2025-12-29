@@ -3,6 +3,15 @@ name: Snyk Scan Workflow (manual trigger)
 on:
   workflow_dispatch:
     inputs:
+      SNYK_PROFILE:
+        description: "Snyk profile for SCA/SAST scans (app), IaC scans (iac)"
+        required: true
+        type: choice
+        options:
+          - app
+          - iac
+          - image_scan
+
       SCA_scan:
         description: "App Profile: Enable Snyk SCA scan (set to 'snyk' to enable; set to 'none' to skip)"
         required: true
@@ -41,45 +50,14 @@ on:
         default: "high"
 
 jobs:
-  sca_sast_scan:
-    name: SCA/SAST Scan
-    if: inputs.SCA_scan == 'snyk' || inputs.SAST_scan == 'snyk'
+  run_secure_snyk:
+    name: Run Secure Snyk Workflow
     uses: ./.github/workflows/secure_snyk.yaml
     with:
-      PROFILE: app
+      PROFILE: ${{ inputs.SNYK_PROFILE }}
       SCA_scan: ${{ inputs.SCA_scan }}
       SAST_scan: ${{ inputs.SAST_scan }}
-      IAC_scan: none
-      CONTAINER_scan: none
-      severity_threshold: ${{ inputs.severity_threshold }}
-    secrets:
-      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      Snyk_Org: ${{ secrets.SNYK_ORG }}
-
-  iac_scan:
-    name: IaC Scan
-    if: inputs.IAC_scan == 'snyk'
-    uses: ./.github/workflows/secure_snyk.yaml
-    with:
-      PROFILE: iac
-      SCA_scan: none
-      SAST_scan: none
       IAC_scan: ${{ inputs.IAC_scan }}
-      CONTAINER_scan: none
-      severity_threshold: ${{ inputs.severity_threshold }}
-    secrets:
-      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      Snyk_Org: ${{ secrets.SNYK_ORG }}
-
-  container_scan:
-    name: Container Scan
-    if: inputs.CONTAINER_scan == 'snyk'
-    uses: ./.github/workflows/secure_snyk.yaml
-    with:
-      PROFILE: image_scan
-      SCA_scan: none
-      SAST_scan: none
-      IAC_scan: none
       CONTAINER_scan: ${{ inputs.CONTAINER_scan }}
       severity_threshold: ${{ inputs.severity_threshold }}
     secrets:
