@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       PROFILE:
-        description: "Training profile: 'app' for SCA/SAST. 'iac' for IaC. 'image_scan' for Container Images"
+        description: "Input: 'app' for SCA/SAST. 'iac' for IaC. 'image_scan' for Container Images"
         required: true
         type: string
         # This is used to select the appropriate Snyk scan type

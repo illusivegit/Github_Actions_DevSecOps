@@ -1,73 +1,46 @@
-name: Run Secure Snyk Workflow (Manual)
+name: Snyk Scan Workflow (manual trigger)
 
 on:
   workflow_dispatch:
     inputs:
-      profile:
-        description: "Training profile: 'app' for SCA/SAST, 'iac' for IaC, 'image_scan' for container images"
+      SNYK_PROFILE:
+        description: "Snyk profile for SCA/SAST scans (app), IaC scans (iac)"
+        required: true
+        options: 
+          - app
+
+      SCA_scan:
+        description: "App Profile: Enable Snyk SCA scan (set to 'snyk' to enable; set to 'none' to skip)"
         required: true
         type: choice
         options:
-          - app
-          - iac
-          - image_scan
-
-      sca_scan:
-        description: "App profile: set to 'snyk' to run; set to 'none' to skip"
-        required: false
-        default: snyk
-        type: choice
-        options:
           - snyk
           - none
 
-      sast_scan:
-        description: "App profile: set to 'snyk' to run; set to 'none' to skip"
+      SAST_scan:
+        description: "App Profile: Enable Snyk SAST scan (set to 'snyk' to enable; set to 'none' to skip)"
         required: false
-        default: none
-        type: choice
-        options:
-          - snyk
-          - none
-
-      iac_scan:
-        description: "IaC profile: must be 'snyk' when profile is 'iac'"
-        required: false
-        default: snyk
-        type: choice
-        options:
-          - snyk
-          - none
-
-      container_scan:
-        description: "Image scan profile: must be 'snyk' when profile is 'image_scan'"
-        required: false
-        default: snyk
         type: choice
         options:
           - snyk
           - none
 
       severity_threshold:
-        description: "Enforced severity threshold. Use 'none' for scorched earth (internally treated as low)."
+        description: "Set security scan severity threshold (low, medium, high, critical), default is high"
         required: false
-        default: high
-        type: choice
-        options:
-          - high
-          - none
+        default: "high"
 
 jobs:
   run_secure_snyk:
     name: Run Secure Snyk Workflow
-    uses: ./.github/workflows/secure_snyk.yaml
+    uses: ./.github/workflows/reusable-workflow.yaml
     with:
-      PROFILE: ${{ inputs.profile }}
-      SCA_scan: ${{ inputs.sca_scan }}
-      SAST_scan: ${{ inputs.sast_scan }}
-      IAC_scan: ${{ inputs.iac_scan }}
-      CONTAINER_scan: ${{ inputs.container_scan }}
+      SNYK_PROFILE: ${{ inputs.SNYK_PROFILE }}
+      SCA_scan: ${{ inputs.SCA_scan }}
+      SAST_scan: ${{ inputs.SAST_scan }}
+      # IAC_scan: ${{ inputs.IAC_scan }}
+      # CONTAINER_scan: ${{ inputs.CONTAINER_scan }}
       severity_threshold: ${{ inputs.severity_threshold }}
     secrets:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      Snyk_Org: ${{ secrets.SNYK_ORG }}
+      SNYK_ORG: ${{ secrets.SNYK_ORG }}
